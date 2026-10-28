@@ -1,0 +1,18 @@
+# runtime outputs
+logs/
+data/
+ec-backup/
+*.log
+*.zip
+
+# local tools (LibreHardwareMonitor etc. are downloaded separately)
+tools/
+
+# compiled artifacts (the UI compiles app-cs.txt at runtime)
+*.exe
+*.pdb
+
+# editor / system
+.vs/
+*.user
+Thumbs.db

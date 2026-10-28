@@ -1,0 +1,50 @@
+﻿load started (4 threads x 50%)
+t+0s  tempByte: 57 (0x39)
+        Temperature		: 54
+        Current fan speed	: 0.00
+        Target fan speed	: 0.00
+t+10s  tempByte: 57 (0x39)
+        Temperature		: 55
+        Current fan speed	: 0.00
+        Target fan speed	: 0.00
+t+20s  tempByte: 58 (0x3A)
+        Temperature		: 54
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+30s  tempByte: 58 (0x3A)
+        Temperature		: 55
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+40s  tempByte: 57 (0x39)
+        Temperature		: 54
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+50s  tempByte: 58 (0x3A)
+        Temperature		: 54
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+60s  tempByte: 58 (0x3A)
+        Temperature		: 54
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+70s  tempByte: 57 (0x39)
+        Temperature		: 54
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+80s  tempByte: 58 (0x3A)
+        Temperature		: 54
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+90s  tempByte: 57 (0x39)
+        Temperature		: 53
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+100s  tempByte: 57 (0x39)
+        Temperature		: 54
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+t+110s  tempByte: 56 (0x38)
+        Temperature		: 53
+        Current fan speed	: 34.82
+        Target fan speed	: 35.00
+load done
