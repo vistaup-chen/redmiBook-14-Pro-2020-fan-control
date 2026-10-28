@@ -25,7 +25,8 @@
 - `lib/setup-plans.ps1` —— 创建 4 个 Z-fan 电源方案（AC/DC 同值）
 - `lib/gen-configs.ps1` —— 重新生成 4 份 NBFC 配置（改曲线模板用）
 - `lib/install-auto.ps1` —— 创建/启用/禁用智能自动计划任务
-- `lib/load.ps1` / `lib/sensors.ps1` —— 受控负载发生器 / 传感器采样（标定与验证用）
+- `lib/load.ps1` / `lib/sensors.ps1` —— 受控负载发生器 / 传感器采样（标定与验证用；
+  sensors 需要 LibreHardwareMonitor 便携版解压到仓库根 `tools/LHM/`，可选）
 - `../nbfc-configs/` —— 4 份 NBFC 配置（Silent/Balanced/Performance/DoNotDisturb）
 
 ## 首次部署

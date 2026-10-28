@@ -27,7 +27,7 @@
 0. 前置：已安装 [NBFC](https://github.com/hirschmann/nbfc)（本仓库脚本假定服务名 `NbfcService`、
    目录 `C:\Program Files (x86)\NoteBook FanControl`，安装时选本机对应配置或先用只读模式验证）。
 1. 把 `nbfc-configs/` 里的 4 份 XML 复制到 NBFC 的 `Configs\` 目录；
-2. 以管理员运行 `scripts/setup-plans.ps1` 创建 4 个电源方案（AC/DC 同值）；
+2. 以管理员运行 `scripts/lib/setup-plans.ps1` 创建 4 个电源方案（AC/DC 同值）；
 3. 双击 `scripts/静音模式.bat` 体验风扇 0 转；或按 `ui/README.md` 启动图形界面。
 
 > 首次务必以 `nbfc start -r`（只读）确认温度读数正常后再切正式控制。
@@ -40,6 +40,11 @@
 ├── nbfc-configs/       本机专属 NBFC 配置（4 模式曲线，脚本与 UI 共用）
 └── docs/               技术原理（EC 寄存器地图/功耗墙解码/实测数据）、模式详解、故障排除
 ```
+
+## 可选工具
+
+`lib/sensors.ps1` 依赖 LibreHardwareMonitor（便携版，解压到仓库根的 `tools/LHM/` 即可，
+不随仓库分发）。仅用于传感器交叉验证与标定，风扇控制本身不依赖它。
 
 ## 技术原理（30 秒版）
 
