@@ -16,3 +16,6 @@ tools/
 .vs/
 *.user
 Thumbs.db
+
+# overnight session watchdog (not part of the project)
+watchdog/

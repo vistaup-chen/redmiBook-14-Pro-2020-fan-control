@@ -1,5 +1,6 @@
 # gen-configs-v2.ps1 - regenerate 4 NBFC configs with optimized curves (ASCII only)
-$dir = Join-Path (Split-Path $PSScriptRoot -Parent) "nbfc-configs"
+$root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$dir = Join-Path $root "nbfc-configs"
 function Th($pairs){
   $out = ""
   foreach($p in $pairs){

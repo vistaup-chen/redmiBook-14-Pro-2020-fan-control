@@ -32,4 +32,5 @@ if($t){
 } else { "OFF (not created)" }
 Get-Content (Join-Path (Split-Path $PSScriptRoot -Parent) "logs\auto-mode.log") -Tail 1 -ErrorAction SilentlyContinue
 "== service =="
-(Get-Service NbfcService).Status
+$svc = Get-Service NbfcService -ErrorAction SilentlyContinue
+if($svc){ $svc.Status } else { "not installed" }

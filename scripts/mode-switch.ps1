@@ -5,8 +5,10 @@ param([string]$Mode = "quiet")
 
 $nbfc = "C:\Program Files (x86)\NoteBook FanControl\nbfc.exe"
 $ec   = "C:\Program Files (x86)\NoteBook FanControl\ec-probe.exe"
-$backupDir = Join-Path (Split-Path $PSScriptRoot -Parent) "logs"   # repo-root\logs (runtime)
-. "$PSScriptRoot\lib\msr-lib.ps1"
+$backupDir = Join-Path (Split-Path $PSScriptRoot -Parent) "data"   # repo-root\data, shared with the UI
+$msrBackup = Join-Path $backupDir "msr-610-original.txt"
+# msr-lib loads NBFC's OpenHardwareMonitorLib at dot-source time; restore must still work when NBFC is gone
+if($Mode -ne "restore" -or (Test-Path $msrBackup)){ . "$PSScriptRoot\lib\msr-lib.ps1" }
 
 $plans = @{
   quiet       = "9a10e4a1-1111-4b7a-8c0d-000000000001"
@@ -25,7 +27,9 @@ $configs = @{
   if($Mode -eq "restore"){
     "== RESTORE: stop NBFC control (EC reverts to auto) =="
     & $nbfc stop 2>&1
-    $orig = Join-Path $backupDir "msr-610-original.txt"
+    "== power plan -> system default =="
+    powercfg /setactive $plans[$Mode]
+    $orig = $msrBackup
     if(Test-Path $orig){
       $line = (Get-Content $orig | Select-Object -First 1).Trim()
       $m = [regex]::Match($line, '0x([0-9A-Fa-f]{16})')
@@ -48,7 +52,7 @@ $configs = @{
       "== unlock PL1 28W (MSR 0x610) =="
       $val = Get-Msr 0x610
       New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
-$origPath = Join-Path $backupDir "msr-610-original.txt"
+      $origPath = $msrBackup
       if(-not (Test-Path $origPath)){ ("0x{0:X16}" -f $val) | Out-File $origPath -Encoding ascii }
       # clear bits 0-14, set PL1=28W (224 x 1/8W), keep enable(bit15)/clamp(bit16)
       $b = [BitConverter]::GetBytes([UInt64]$val)
@@ -63,7 +67,7 @@ $origPath = Join-Path $backupDir "msr-610-original.txt"
     } else {
       # leaving performance mode: restore original PL if an override is active
       New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
-$origPath = Join-Path $backupDir "msr-610-original.txt"
+      $origPath = $msrBackup
       if(Test-Path $origPath){
         $line = (Get-Content $origPath | Select-Object -First 1).Trim()
         $m = [regex]::Match($line, '0x([0-9A-Fa-f]{16})')
