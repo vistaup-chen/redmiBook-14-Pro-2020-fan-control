@@ -42,6 +42,13 @@ $configs = @{
   } else {
     $cfg = $configs[$Mode]
     if(-not $cfg){ "unknown mode: $Mode"; exit 2 }
+    if($Mode -eq "performance"){
+      # a leftover hidden "Processor max frequency" (PROCFREQMAX) hard-caps the CPU
+      # (e.g. 2500MHz -> no turbo above 2.5GHz); extreme mode must be uncapped
+      "== clear processor frequency cap =="
+      powercfg /setacvalueindex $plans[$Mode] SUB_PROCESSOR PROCFREQMAX 0 | Out-Null
+      powercfg /setdcvalueindex $plans[$Mode] SUB_PROCESSOR PROCFREQMAX 0 | Out-Null
+    }
     "== power plan =="
     powercfg /setactive $plans[$Mode]
     "== NBFC config -> $cfg =="

@@ -118,6 +118,24 @@ namespace FanManager
             lock (EcLock) return Run(EcProbe, "dump", 60000);
         }
 
+        // hidden "处理器最大频率" (MHz) of a scheme, read from the registry so it works on
+        // any Windows locale; 0 / missing key = uncapped
+        public static int PlanFreqCap(string schemeGuid)
+        {
+            try
+            {
+                using (var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                    @"SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\" + schemeGuid + @"\" +
+                    SubProcessor + @"\" + FreqGuid))
+                {
+                    if (k == null) return 0;
+                    object v = k.GetValue("ACSettingIndex");
+                    return v == null ? 0 : Convert.ToInt32(v);
+                }
+            }
+            catch { return 0; }
+        }
+
         public static string ActivePlanGuid()
         {
             string s = Run("powercfg", "/getactivescheme", 8000, 1);
@@ -648,6 +666,13 @@ namespace FanManager
                     System.Globalization.NumberStyles.HexNumber, null, out orig) && cur != orig)
                 { UiLog.Step("· 退出性能模式，还原功耗墙 PL1"); Msr.Write(0x610, orig); log += "PL restored. "; }
             }
+            if (mode == "performance")
+            {
+                // a leftover hidden "处理器最大频率" (PROCFREQMAX, e.g. 2500MHz) hard-caps the
+                // CPU and kills turbo -> extreme mode must always run uncapped
+                Config.Run("powercfg", "/setacvalueindex " + meta[1] + " " + Config.SubProcessor + " " + Config.FreqGuid + " 0");
+                Config.Run("powercfg", "/setdcvalueindex " + meta[1] + " " + Config.SubProcessor + " " + Config.FreqGuid + " 0");
+            }
             UiLog.Step("1/4 切换电源方案 → " + meta[0]);
             Config.Run("powercfg", "/setactive " + meta[1]);
             UiLog.Step("2/4 切换 NBFC 配置");
@@ -677,6 +702,11 @@ namespace FanManager
             if (mode != "restore" && meta == null) return "未知模式";
             string want = mode == "restore" ? Config.SystemGuid : meta[1];
             if (Config.ActivePlanGuid() != want) return "电源方案未切换到目标值";
+            if (mode == "performance")
+            {
+                int cap = Config.PlanFreqCap(Config.PerfGuid);
+                if (cap > 0) return "处理器最大频率上限未清除 (" + cap + "MHz)";
+            }
             if (mode == "restore")
             {
                 int ecAuto = Config.EcRead(Profile.FanModeReg);
@@ -1147,7 +1177,7 @@ namespace FanManager
         Label lblMonPl, lblMonHint, lblMonStats;
         Button[] modeButtons;
         Button btnRestore, btnManualApply, btnManualAuto, btnCurveSave, btnCurveReset, btnCurveAdd, btnCurveDel;
-        bool manualEngaged = false;
+        volatile bool manualEngaged = false;   // read by the status-engine thread
         bool busy;
         bool exiting;
         int lastTemp = -1;
@@ -1507,6 +1537,8 @@ namespace FanManager
                 return;
             }
             UiLog.Action("正在切换到「" + Modes.NameOf(mode) + "」…");
+            // the switch restarts NBFC with the plan's curve -> any manual-fan state is gone
+            manualEngaged = false;
             Task.Run(() => Modes.Apply(mode)).ContinueWith(t =>
             {
                 string r = t.IsFaulted ? "error: " + t.Exception.GetBaseException().Message : t.Result;
@@ -1582,13 +1614,15 @@ namespace FanManager
                 UiLog.Action("正在设置手动风扇 " + v + "%…");
                 Task.Run(() => Config.Run(Config.NbfcExe, "set -s " + v)).ContinueWith(t =>
                 {
-                    manualEngaged = true;
+                    string r = t.IsFaulted ? "ERR: " + t.Exception.GetBaseException().Message : (t.Result ?? "");
+                    bool ok = !r.StartsWith("ERR", StringComparison.Ordinal);
+                    manualEngaged = ok;   // only claim manual mode when nbfc actually took it
                     BeginInvoke((Action)(() =>
                     {
                         EndBusy();
-                        string msg = "手动模式 " + v + "%（温度≥80℃ 会自动交还）";
+                        string msg = ok ? ("手动模式 " + v + "%（温度≥80℃ 会自动交还）") : ("手动转速设置失败: " + r.Trim());
                         lblHint.Text = msg;
-                        UiLog.Done(msg);
+                        if (ok) UiLog.Done(msg); else UiLog.Fail(msg);
                     }));
                 });
             };
@@ -1881,7 +1915,7 @@ namespace FanManager
             g1.Controls.Add(bOn); g1.Controls.Add(bOff); g1.Controls.Add(lblAutoState);
             fl.Controls.Add(g1);
 
-            var g2 = new GroupBox { Text = "全局频率上限 (MHz，作用于全部 Z-fan 方案；0=不限)", Width = 510, Height = 92 };
+            var g2 = new GroupBox { Text = "全局频率上限 (MHz，作用于静音/均衡/勿扰；极限性能始终不限制)", Width = 510, Height = 92 };
             cmbFreq = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100, Location = new Point(12, 24) };
             cmbFreq.Items.AddRange(new object[] { "不限", "1800", "2000", "2200", "2500", "2800" });
             cmbFreq.SelectedIndex = 0;
@@ -1891,10 +1925,11 @@ namespace FanManager
             {
                 if (!TryBeginBusy()) { UiLog.Action("上一操作还在进行中，请稍候…"); return; }
                 int mhz = cmbFreq.SelectedIndex == 0 ? 0 : int.Parse((string)cmbFreq.SelectedItem);
-                UiLog.Action("正在设置全局频率上限（8 个电源方案值）…");
+                UiLog.Action("正在设置全局频率上限（6 个电源方案值，极限性能不限制）…");
                 Task.Run(() =>
                 {
-                    foreach (var g in new[] { Config.SilentGuid, Config.BalancedGuid, Config.PerfGuid, Config.DndGuid })
+                    // 极限性能永远不设上限：上限会硬限频并彻底杀掉睿频
+                    foreach (var g in new[] { Config.SilentGuid, Config.BalancedGuid, Config.DndGuid })
                     {
                         Config.Run("powercfg", "/setacvalueindex " + g + " " + Config.SubProcessor + " " + Config.FreqGuid + " " + mhz);
                         Config.Run("powercfg", "/setdcvalueindex " + g + " " + Config.SubProcessor + " " + Config.FreqGuid + " " + mhz);

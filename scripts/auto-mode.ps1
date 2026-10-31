@@ -64,14 +64,25 @@ if($scheme -eq $guidSilent){
 
 if($action -eq "escalate" -and -not $DryRun){
   & powershell -NoProfile -ExecutionPolicy Bypass -File $switch balanced 2>&1 | Out-Null
-  $state.lastSwitch = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-  $state.hot = 0; $state.cool = 0
-  Log ("escalated to Balanced, temp=" + $temp)
+  if($LASTEXITCODE -ne 0){
+    # do not record a "successful" switch nor start the anti-flap timer: retry next run
+    Log ("escalate FAILED (mode-switch exit " + $LASTEXITCODE + "), temp=" + $temp)
+    $state.hot = 0; $state.cool = 0
+  } else {
+    $state.lastSwitch = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+    $state.hot = 0; $state.cool = 0
+    Log ("escalated to Balanced, temp=" + $temp)
+  }
 } elseif($action -eq "return" -and -not $DryRun){
   & powershell -NoProfile -ExecutionPolicy Bypass -File $switch quiet 2>&1 | Out-Null
-  $state.lastSwitch = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-  $state.hot = 0; $state.cool = 0
-  Log ("returned to Silent, temp=" + $temp)
+  if($LASTEXITCODE -ne 0){
+    Log ("return FAILED (mode-switch exit " + $LASTEXITCODE + "), temp=" + $temp)
+    $state.hot = 0; $state.cool = 0
+  } else {
+    $state.lastSwitch = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+    $state.hot = 0; $state.cool = 0
+    Log ("returned to Silent, temp=" + $temp)
+  }
 } else {
   Log ("temp=" + $temp + " scheme=" + $scheme.Substring(30) + " hot=" + $state.hot + " cool=" + $state.cool + " -> " + $action)
 }

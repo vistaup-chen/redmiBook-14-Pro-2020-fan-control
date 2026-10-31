@@ -12,6 +12,9 @@ $G_MIN  = "893dee8e-2bef-41e0-89c6-b55d0929964c"
 $G_EPP  = "36687f9e-e3a5-4dbf-b1dc-15eb381c6863"
 $G_EPP1 = "36687f9e-e3a5-4dbf-b1dc-15eb381c6864"
 $G_BOOST= "be337238-0d82-4146-a960-4f3749d470c7"
+# hidden "Processor max frequency" (MHz). A leftover value here hard-caps the CPU
+# (e.g. 2500 = 2.5GHz, kills turbo); 0 = no cap.
+$G_FREQMAX = "75b0ae3f-bce0-45a7-8c89-c9611c25e100"
 
 foreach($p in $plans){
   $g = $p.guid
@@ -22,8 +25,9 @@ foreach($p in $plans){
     powercfg $side $g $SUB $G_EPP  $p.epp | Out-Null
     powercfg $side $g $SUB $G_EPP1 $p.epp | Out-Null
     powercfg $side $g $SUB $G_BOOST $p.boost | Out-Null
+    powercfg $side $g $SUB $G_FREQMAX 0 | Out-Null
   }
-  "set $($p.name): state=$($p.maxstate)/$($p.maxstate1) epp=$($p.epp) boost=$($p.boost)"
+  "set $($p.name): state=$($p.maxstate)/$($p.maxstate1) epp=$($p.epp) boost=$($p.boost) freqmax=0"
 }
 # re-activate current plan so values take effect
 powercfg /setactive 9a10e4a1-1111-4b7a-8c0d-000000000001

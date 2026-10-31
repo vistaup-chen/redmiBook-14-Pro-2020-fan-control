@@ -14,7 +14,9 @@ New-Item -ItemType Directory -Force -Path (Split-Path $OutFile -Parent) | Out-Nu
 function Q($s){ return "'" + ($s -replace "'","''") + "'" }
 $argLine = ''
 foreach($a in $ScriptArgs){ $argLine += ' ' + (Q $a) }
-$inner = "& " + (Q $Script) + $argLine + " *>&1 | Out-File -FilePath " + (Q $OutFile) + " -Encoding utf8; exit `$LASTEXITCODE"
+# a throwing/crashing script must not surface as exit 0 ($LASTEXITCODE is $null there)
+$inner = "& " + (Q $Script) + $argLine + " *>&1 | Out-File -FilePath " + (Q $OutFile) + " -Encoding utf8; " +
+         "`$ok = `$?; if(`$LASTEXITCODE){ exit `$LASTEXITCODE } elseif(-not `$ok){ exit 1 } else { exit 0 }"
 $bytes  = [System.Text.Encoding]::Unicode.GetBytes($inner)
 $b64    = [Convert]::ToBase64String($bytes)
 
