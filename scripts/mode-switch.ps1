@@ -9,13 +9,14 @@ $backupDir = Join-Path (Split-Path $PSScriptRoot -Parent) "data"   # repo-root\d
 $msrBackup = Join-Path $backupDir "msr-610-original.txt"
 # msr-lib loads NBFC's OpenHardwareMonitorLib at dot-source time; restore must still work when NBFC is gone
 if($Mode -ne "restore" -or (Test-Path $msrBackup)){ . "$PSScriptRoot\lib\msr-lib.ps1" }
+# keeps the user's own sleep/hibernate/display timeouts and remembers their original plan
+. "$PSScriptRoot\lib\power-settings.ps1"
 
 $plans = @{
   quiet       = "9a10e4a1-1111-4b7a-8c0d-000000000001"
   balanced    = "9a10e4a1-1111-4b7a-8c0d-000000000002"
   performance = "9a10e4a1-1111-4b7a-8c0d-000000000003"
   dnd         = "9a10e4a1-1111-4b7a-8c0d-000000000004"
-  restore     = "a1841308-3541-4fab-bc81-f71556f20b4a"
 }
 $configs = @{
   quiet       = "RedmiBook 14 2020 Silent"
@@ -27,8 +28,9 @@ $configs = @{
   if($Mode -eq "restore"){
     "== RESTORE: stop NBFC control (EC reverts to auto) =="
     & $nbfc stop 2>&1
-    "== power plan -> system default =="
-    powercfg /setactive $plans[$Mode]
+    "== power plan -> the user's own plan (not a hardcoded Power Saver) =="
+    $restoreGuid = Resolve-BaselinePlan -DataDir $backupDir
+    if($restoreGuid){ powercfg /setactive $restoreGuid } else { "baseline plan not found; left unchanged" }
     $orig = $msrBackup
     if(Test-Path $orig){
       $line = (Get-Content $orig | Select-Object -First 1).Trim()
@@ -50,6 +52,9 @@ $configs = @{
       powercfg /setdcvalueindex $plans[$Mode] SUB_PROCESSOR PROCFREQMAX 0 | Out-Null
     }
     "== power plan =="
+    # this project only owns SUB_PROCESSOR; mirror the user's sleep/display timers over
+    # so a mode switch cannot change when the machine goes to sleep
+    Sync-PlanUserTimers -Target $plans[$Mode] -DataDir $backupDir
     powercfg /setactive $plans[$Mode]
     "== NBFC config -> $cfg =="
     & $nbfc config -s $cfg 2>&1

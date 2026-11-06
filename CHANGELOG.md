@@ -30,6 +30,13 @@
 - `ui\gen-appcs.ps1`：一键从 Program.cs 重新生成 app-cs.txt（原来只有 README 里的一段代码）
 
 ### 修复
+- **切模式会改掉系统的休眠/息屏超时**：4 个 Z-fan 方案是复制出来的，`powercfg /duplicatescheme`
+  把源方案的睡眠超时一并带入（本机为交流 10 分钟 / 电池 4 分钟），切任一模式后电脑到点就休眠，
+  看起来像「只想改 CPU 频率，却把休眠时间改了」。新增 `scripts/lib/power-settings.ps1`：每次切模式
+  前**实时读取**当前生效方案的睡眠/休眠/混合睡眠/无值守睡眠/息屏超时（不缓存、不写死），镜像进
+  目标 Z-fan 方案，只写处理器项；
+  「恢复默认」改为回到你原来的方案（GUID 记录在 `data\power-baseline.txt`），不再固定切到「节能」；
+  `setup-plans.ps1` 支持缺方案时从原方案复制创建，且不再强制把机器留在静音方案
 - **智能自动（ZFanAutoMode）计划任务从未真正运行**：`install-auto.ps1` 的 `-Argument` 是单引号
   字符串，`$PSScriptRoot` 没有被展开，任务里存的是字面量路径，每次触发都以「文件不存在」
   (0xFFFD0000) 失败。现在创建时解析成绝对路径；`enable` 会检测到旧式坏任务并自动重建

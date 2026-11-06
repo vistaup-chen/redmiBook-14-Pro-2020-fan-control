@@ -29,7 +29,8 @@
 0. 前置：已安装 [NBFC](https://github.com/hirschmann/nbfc)（本仓库脚本假定服务名 `NbfcService`、
    目录 `C:\Program Files (x86)\NoteBook FanControl`，安装时选本机对应配置或先用只读模式验证）。
 1. 把 `nbfc-configs/` 里的 4 份 XML 复制到 NBFC 的 `Configs\` 目录；
-2. 以管理员运行 `scripts/lib/setup-plans.ps1` 创建 4 个电源方案（AC/DC 同值）；
+2. 以管理员运行 `scripts/lib/setup-plans.ps1` 创建 4 个电源方案（处理器参数 AC/DC 同值；
+   睡眠/息屏等超时沿用你当前的设置，每次切换都会实时读取，切模式不会改变休眠行为）；
 3. 双击 `scripts/静音模式.bat` 体验风扇 0 转；或按 `ui/README.md` 启动图形界面。
 
 > 界面关闭窗口 = 最小化到托盘（退出请用托盘菜单）；`Ctrl+Alt+1~4` 可全局切模式。

@@ -142,6 +142,25 @@ namespace FanManager
             Match m = Regex.Match(s, @"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
             return m.Success ? m.Groups[1].Value.ToLower() : "";
         }
+
+        // Keep the user's own sleep/hibernate/display timers on a Z-fan plan. The tool only
+        // owns CPU frequency; duplicating a plan also copied its short idle timers, which made
+        // the machine sleep ~10 min after a mode switch. Logic shared with scripts\lib.
+        public static void SyncPlanTimers(string planGuid)
+        {
+            string r = Run("powershell", "-NoProfile -ExecutionPolicy Bypass -File \"" + ScriptsDir +
+                           "\\lib\\sync-plan-timers.ps1\" -Target " + planGuid + " -DataDir \"" + BaseDir + "\\data\"", 30000);
+            if (r != null && r.Trim().Length > 0) Log("sync-plan-timers: " + r.Trim());
+        }
+
+        // GUID of the plan the machine used before this tool took over (data\power-baseline.txt)
+        public static string BaselinePlanGuid()
+        {
+            string r = Run("powershell", "-NoProfile -ExecutionPolicy Bypass -File \"" + ScriptsDir +
+                           "\\lib\\sync-plan-timers.ps1\" -PrintBaseline -DataDir \"" + BaseDir + "\\data\"", 30000);
+            Match m = Regex.Match(r ?? "", @"baseline=([0-9a-fA-F-]{36})");
+            return m.Success ? m.Groups[1].Value.ToLower() : "";
+        }
     }
 
     // ---- UI activity log: what the app is doing right now, shown in the side/bottom log panel ----
@@ -650,10 +669,12 @@ namespace FanManager
                     UiLog.Step("2/3 还原功耗墙 PL1");
                     if (Msr.Write(0x610, orig)) log += "PL restored. ";
                 }
-                UiLog.Step("3/3 切回系统默认电源方案");
-                Config.Run("powercfg", "/setactive " + Config.SystemGuid);
-                Config.Log("mode switch: restore");
-                return log + "plan=system default";
+                UiLog.Step("3/3 切回你原来的电源方案");
+                string back = Config.BaselinePlanGuid();
+                if (back == "") back = Config.SystemGuid;
+                Config.Run("powercfg", "/setactive " + back);
+                Config.Log("mode switch: restore -> " + back);
+                return log + "plan=" + back;
             }
             string[] meta = MetaFor(mode);
             if (meta == null) return "unknown mode";
@@ -673,7 +694,8 @@ namespace FanManager
                 Config.Run("powercfg", "/setacvalueindex " + meta[1] + " " + Config.SubProcessor + " " + Config.FreqGuid + " 0");
                 Config.Run("powercfg", "/setdcvalueindex " + meta[1] + " " + Config.SubProcessor + " " + Config.FreqGuid + " 0");
             }
-            UiLog.Step("1/4 切换电源方案 → " + meta[0]);
+            UiLog.Step("1/4 切换电源方案（保留你的休眠/息屏超时）→ " + meta[0]);
+            Config.SyncPlanTimers(meta[1]);
             Config.Run("powercfg", "/setactive " + meta[1]);
             UiLog.Step("2/4 切换 NBFC 配置");
             Config.Run(Config.NbfcExe, "config -s \"" + meta[0] + "\"");
@@ -700,7 +722,8 @@ namespace FanManager
         {
             string[] meta = MetaFor(mode);
             if (mode != "restore" && meta == null) return "未知模式";
-            string want = mode == "restore" ? Config.SystemGuid : meta[1];
+            string want = mode == "restore" ? Config.BaselinePlanGuid() : meta[1];
+            if (want == "") want = Config.SystemGuid;
             if (Config.ActivePlanGuid() != want) return "电源方案未切换到目标值";
             if (mode == "performance")
             {
@@ -1068,7 +1091,7 @@ namespace FanManager
                 else if (s.PlanGuid == Config.BalancedGuid) s.PlanName = "均衡模式";
                 else if (s.PlanGuid == Config.PerfGuid) s.PlanName = "极限性能";
                 else if (s.PlanGuid == Config.DndGuid) s.PlanName = "勿扰全静";
-                else if (s.PlanGuid == Config.SystemGuid) s.PlanName = "系统默认(节能)";
+                else s.PlanName = "系统原方案";   // restored / user's own plan
 
                 Match m;
                 if ((m = Regex.Match(st, @"Selected config name\s*:\s*(.+)")).Success) s.Cfg = m.Groups[1].Value.Trim();

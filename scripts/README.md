@@ -22,7 +22,9 @@
 - `auto-mode.ps1` —— 智能自动观察器（由计划任务每分钟调用）
 - `lib/msr-lib.ps1` —— MSR 读写（复用 NBFC 自带 OpenHardwareMonitorLib 的 Ring0 类，免杀软拦截）
 - `lib/run-elevated.ps1` —— 静默提权封装（UAC 静默机器上无弹窗）
-- `lib/setup-plans.ps1` —— 创建 4 个 Z-fan 电源方案（AC/DC 同值）
+- `lib/setup-plans.ps1` —— 创建/刷新 4 个 Z-fan 电源方案（只写处理器参数，睡眠/息屏超时沿用原方案）
+- `lib/power-settings.ps1` —— 记录用户原方案 GUID、把其睡眠/休眠/息屏超时镜像进 Z-fan 方案
+- `lib/sync-plan-timers.ps1` —— 单独同步某个方案的超时（排障/手动修复用）
 - `lib/gen-configs.ps1` —— 重新生成 4 份 NBFC 配置（改曲线模板用）
 - `lib/install-auto.ps1` —— 创建/启用/禁用智能自动计划任务
 - `lib/load.ps1` / `lib/sensors.ps1` —— 受控负载发生器 / 传感器采样（标定与验证用；
